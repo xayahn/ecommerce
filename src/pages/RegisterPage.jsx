@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authContext";
 import Spinner from "../components/Spinner";
 import SEO from "../components/SEO";
 

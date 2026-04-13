@@ -11,7 +11,7 @@ import {
 } from "react-icons/hi";
 import clsx       from "clsx";
 import useCart    from "../hooks/useCart";
-import { useAuth }     from "../context/AuthContext";
+import { useAuth }     from "../context/authContext";
 import { useWishlist } from "../context/WishlistContext";
 
 const NAV_LINKS = [

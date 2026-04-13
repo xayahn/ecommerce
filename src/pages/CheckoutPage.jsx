@@ -8,7 +8,7 @@ import { useNavigate }       from "react-router-dom";
 import { HiCheck }           from "react-icons/hi";
 import Button                from "../components/Button";
 import { orderService }      from "../services/orderService";
-import { useAuth }           from "../context/AuthContext";
+import { useAuth }           from "../context/authContext";
 import useCart               from "../hooks/useCart";
 import clsx                  from "clsx";
 import toast                 from "react-hot-toast";

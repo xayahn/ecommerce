@@ -10,7 +10,7 @@ import { BrowserRouter } from "react-router-dom";
 import { Toaster }    from "react-hot-toast";
 
 import ErrorBoundary    from "./components/ErrorBoundary";
-import { AuthProvider }     from "./context/AuthContext";
+import { AuthProvider }     from "./context/authContext";
 import { CartProvider }     from "./context/CartContext";
 import { WishlistProvider } from "./context/WishlistContext";
 
