@@ -1,0 +1,259 @@
+// schema.prisma
+// Full e-commerce schema mirroring Shopify's data model.
+// Run: npx prisma migrate dev --name init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── User ────────────────────────────────────────────────────────────────────
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         UserRole  @default(CUSTOMER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  addresses    Address[]
+  orders       Order[]
+  cart         Cart?
+  wishlist     WishlistItem[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+// ─── Address ─────────────────────────────────────────────────────────────────
+model Address {
+  id         String   @id @default(uuid())
+  userId     String
+  firstName  String
+  lastName   String
+  address1   String
+  address2   String?
+  city       String
+  province   String
+  zip        String
+  country    String   @default("US")
+  phone      String?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("addresses")
+}
+
+// ─── Collection ───────────────────────────────────────────────────────────────
+model Collection {
+  id          String   @id @default(uuid())
+  title       String
+  handle      String   @unique
+  description String?
+  imageSrc    String?
+  imageAlt    String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products    CollectionProduct[]
+
+  @@map("collections")
+}
+
+// ─── Product ──────────────────────────────────────────────────────────────────
+model Product {
+  id          String        @id @default(uuid())
+  title       String
+  handle      String        @unique
+  description String
+  vendor      String
+  productType String
+  tags        String[]
+  status      ProductStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  variants    ProductVariant[]
+  images      ProductImage[]
+  collections CollectionProduct[]
+  cartItems   CartItem[]
+  orderItems  OrderLineItem[]
+  wishlist    WishlistItem[]
+
+  @@map("products")
+}
+
+enum ProductStatus {
+  ACTIVE
+  DRAFT
+  ARCHIVED
+}
+
+// ─── ProductVariant ───────────────────────────────────────────────────────────
+model ProductVariant {
+  id                String   @id @default(uuid())
+  productId         String
+  title             String
+  price             Decimal  @db.Decimal(10, 2)
+  compareAtPrice    Decimal? @db.Decimal(10, 2)
+  sku               String   @unique
+  inventoryQuantity Int      @default(0)
+  selectedOptions   Json     // [{ name: "Size", value: "M" }, ...]
+  createdAt         DateTime @default(now())
+
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_variants")
+}
+
+// ─── ProductImage ─────────────────────────────────────────────────────────────
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String
+  src       String
+  altText   String?
+  position  Int      @default(0)
+
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_images")
+}
+
+// ─── CollectionProduct (join table) ──────────────────────────────────────────
+model CollectionProduct {
+  collectionId String
+  productId    String
+
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, productId])
+  @@map("collection_products")
+}
+
+// ─── Cart ─────────────────────────────────────────────────────────────────────
+model Cart {
+  id        String     @id @default(uuid())
+  userId    String?    @unique
+  token     String     @unique @default(uuid())
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items     CartItem[]
+
+  @@map("carts")
+}
+
+// ─── CartItem ─────────────────────────────────────────────────────────────────
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  productId String
+  variantId String
+  quantity  Int      @default(1)
+  addedAt   DateTime @default(now())
+
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@unique([cartId, variantId])
+  @@map("cart_items")
+}
+
+// ─── Order ────────────────────────────────────────────────────────────────────
+model Order {
+  id                String            @id @default(uuid())
+  orderNumber       Int               @unique @default(autoincrement())
+  userId            String?
+  email             String
+  status            OrderStatus       @default(PENDING)
+  financialStatus   PaymentStatus     @default(PENDING)
+  fulfillmentStatus FulfillmentStatus @default(UNFULFILLED)
+
+  subtotalPrice     Decimal           @db.Decimal(10, 2)
+  totalTax          Decimal           @db.Decimal(10, 2)
+  totalPrice        Decimal           @db.Decimal(10, 2)
+  discountCode      String?
+  discountAmount    Decimal?          @db.Decimal(10, 2)
+
+  shippingAddress   Json
+  billingAddress    Json?
+  paymentMethod     String?
+
+  note              String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  user              User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  lineItems         OrderLineItem[]
+
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum FulfillmentStatus {
+  UNFULFILLED
+  PARTIAL
+  FULFILLED
+}
+
+// ─── OrderLineItem ────────────────────────────────────────────────────────────
+model OrderLineItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  productId String
+  variantId String
+  title     String
+  variantTitle String
+  quantity  Int
+  price     Decimal  @db.Decimal(10, 2)
+  imageSrc  String?
+
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@map("order_line_items")
+}
+
+// ─── WishlistItem ─────────────────────────────────────────────────────────────
+model WishlistItem {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  addedAt   DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("wishlist_items")
+}
